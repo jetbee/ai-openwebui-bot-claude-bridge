@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "openwebui-bridge": {
+      "command": "node",
+      "args": ["/absolute/path/to/openwebui-bridge/bridge.mjs"],
+      "env": { "OPENWEBUI_BRIDGE_ACTIVE": "1" }
+    }
+  }
+}

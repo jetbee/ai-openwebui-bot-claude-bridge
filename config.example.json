@@ -1,0 +1,7 @@
+{
+  "baseUrl": "http://YOUR-OPENWEBUI-HOST:3000",
+  "keyFile": "%USERPROFILE%\\.openwebui\\yourbot_api-key",
+  "channelName": "yourbot",
+  "pollMs": 3000,
+  "fetchLimit": 30
+}

@@ -1,0 +1,21 @@
+node_modules/
+
+# Real runtime config (contains your host, channel names, key file paths).
+# Copy the .example files instead and edit those.
+config.json
+bridge.mcp.json
+allowlist.json
+configs/*.json
+configs/*.mcp.json
+!configs/example-persona.json
+!configs/example-persona.mcp.json
+
+# Runtime state, logs, and API key files — never commit these.
+state.json
+state-*.json
+delivery-*.log
+*.bak-*
+*_api-key
+*_login
+
+.DS_Store

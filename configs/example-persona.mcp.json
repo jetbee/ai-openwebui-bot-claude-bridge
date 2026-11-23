@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "openwebui-example-persona": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/openwebui-bridge/bridge.mjs"
+      ],
+      "env": {
+        "OPENWEBUI_BRIDGE_ACTIVE": "1",
+        "OPENWEBUI_BRIDGE_CONFIG": "/absolute/path/to/openwebui-bridge/configs/example-persona.json"
+      }
+    }
+  }
+}
