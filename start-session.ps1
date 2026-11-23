@@ -1,4 +1,4 @@
-# 担当のセッションを、専用の Open WebUI ユーザー・専用のチャンネルにつないで起動する。
+﻿# 担当のセッションを、専用の Open WebUI ユーザー・専用のチャンネルにつないで起動する。
 # 対話できる端末（Windows Terminal など）で実行する。開発用フラグの確認ダイアログが出るので
 # 「I am using this for local development」を選ぶ。
 #

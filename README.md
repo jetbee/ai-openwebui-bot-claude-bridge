@@ -50,6 +50,20 @@ and `configs/<name>.mcp.json` and launches `claude` for you. See `configs/exampl
 shape it produces. The script's `$Prompt` default is intentionally minimal — write your own system prompt
 for your own workflow (escalation rules, who to contact, what the persona is responsible for, etc.).
 
+Running `start-session.ps1` once per persona by hand (one tmux/terminal pane at a time) works, but doesn't
+scale past a couple of personas. `launch-all.ps1` automates this: it reads a `personas.json` (see
+`personas.example.json`) listing every persona, and opens one `tmux` window per persona itself — `tmux`
+gives each window a real pseudo-terminal even when nobody is attached, which is exactly what
+`--dangerously-load-development-channels` needs.
+
+```powershell
+.\launch-all.ps1 -PersonasFile personas.json -TmuxSession mybots           # launches everything
+.\launch-all.ps1 -PersonasFile personas.json -TmuxSession mybots -DryRun   # preview only, no tmux needed
+```
+
+Each persona still needs its "I am using this for local development" dialog answered once per window —
+that part isn't automated.
+
 ## Configuration reference (`config.json`)
 
 | Key | Meaning |
@@ -136,6 +150,20 @@ Claude Code（claude --dangerously-load-development-channels server:<name>）
 自動生成し、`claude` を起動します。生成される形は `configs/example-persona.*.json` を参照してください。
 スクリプトの `$Prompt` の既定値は意図的に最小限にしてあります。自分の運用（エスカレーションのルール、
 連絡先、その担当の責任範囲など）に合わせて書き換えてください。
+
+`start-session.ps1` を担当の数だけ手で（tmux/端末のパネルを1つずつ開いて）実行する方法は、担当が数人のうちは
+問題ありませんが、数が増えると辛くなります。`launch-all.ps1` はこれを自動化します。`personas.json`
+（見本: `personas.example.json`）に担当を列挙しておけば、担当ごとに `tmux` のウィンドウを自分で作って起動します。
+`tmux` は、誰もアタッチしていない状態（detached）でも各ウィンドウに本物の疑似端末（PTY）を割り当てるので、
+`--dangerously-load-development-channels` が要求する「対話できる端末」の条件もそのまま満たせます。
+
+```powershell
+.\launch-all.ps1 -PersonasFile personas.json -TmuxSession mybots           # 全部起動する
+.\launch-all.ps1 -PersonasFile personas.json -TmuxSession mybots -DryRun   # 起動せず内容だけ確認（tmux不要）
+```
+
+各担当ごとに「I am using this for local development」の確認は、ウィンドウごとに1回ずつ必要です
+（そこまでは自動化していません）。
 
 ### 設定リファレンス（`config.json`）
 

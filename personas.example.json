@@ -1,0 +1,5 @@
+[
+  { "name": "hq", "userPrefix": "yourbot", "baseUrl": "http://YOUR-OPENWEBUI-HOST:3000" },
+  { "name": "work", "userPrefix": "yourbot", "baseUrl": "http://YOUR-OPENWEBUI-HOST:3000" },
+  { "name": "another-persona", "userPrefix": "yourbot", "baseUrl": "http://YOUR-OPENWEBUI-HOST:3000", "prompt": "You are responsible for X. Reply only via the reply tool." }
+]
