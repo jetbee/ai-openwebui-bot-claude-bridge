@@ -88,6 +88,11 @@ function loadAllow() {
   } catch { return new Set() }
 }
 
+// created_at はナノ秒の19桁整数で、Number.MAX_SAFE_INTEGER（2^53）を超える。JSON.parse に数値のまま
+// 渡すと、パースした時点で下の桁が丸められ、以後どれだけ BigInt を使っても元の精度には戻らない。
+// レスポンスの生テキストの段階で "created_at":<数字> を文字列化してから JSON.parse することで、精度を保つ。
+const parsePreservingCreatedAt = text => JSON.parse(text.replace(/"created_at":(\d+)/g, '"created_at":"$1"'))
+
 async function api(method, p, body) {
   const r = await fetch(base + p, {
     method,
@@ -95,7 +100,7 @@ async function api(method, p, body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   if (!r.ok) throw new Error(`HTTP ${r.status} ${method} ${p.replace(/[0-9a-f-]{36}/g, '<id>')}`)
-  return r.json()
+  return parsePreservingCreatedAt(await r.text())
 }
 
 async function findChannelId() {
@@ -268,6 +273,14 @@ if (process.env.OPENWEBUI_BRIDGE_ACTIVE !== '1') {
   const saveState = s => fs.writeFileSync(stateFile, JSON.stringify(s))
   let state = null
   try { state = JSON.parse(fs.readFileSync(stateFile, 'utf8')) } catch {}
+  // 配信ずみの message_id（直近 SEEN_MAX 件）。created_at の精度や並び替えの問題がどこかに残っていても、
+  // 「同じ message_id は二度と配信しない」という最後の砦として独立に効く。state.last だけに頼らない。
+  const SEEN_MAX = 500
+  if (state && !Array.isArray(state.seen)) state.seen = []
+  const markSeen = id => {
+    state.seen.push(id)
+    if (state.seen.length > SEEN_MAX) state.seen.splice(0, state.seen.length - SEEN_MAX)
+  }
 
   const loop = async () => {
     try {
@@ -279,15 +292,17 @@ if (process.env.OPENWEBUI_BRIDGE_ACTIVE !== '1') {
       if (!state) {
         // 初回は過去の履歴を流さない（いまの最新を基準にする）
         const newest = msgs.length ? msgs[msgs.length - 1].created_at : '0'
-        // created_at は 19 桁の整数で、JSON の数値（JS の Number）だと下の桁が丸まる。保存も比較も BigInt で同じ丸め方にそろえる（最新の 1 件が毎回再配信される不具合の対策）
-        state = { last: BigInt(newest).toString() }
+        state = { last: BigInt(newest).toString(), seen: msgs.map(m => String(m.id)) }
         saveState(state)
         log('基準を設定しました（過去のメッセージは渡しません）')
       } else {
         const allow = loadAllow()
         for (const m of msgs) {
-          if (BigInt(m.created_at) <= BigInt(state.last)) continue
+          const id = String(m.id)
+          if (state.seen.includes(id)) continue
+          if (BigInt(m.created_at) <= BigInt(state.last)) { markSeen(id); saveState(state); continue }
           state.last = BigInt(m.created_at).toString()
+          markSeen(id)
           saveState(state)
           // チャンネルのメンバーの投稿は、自分自身（このボット）を除いてすべて受け取る（既定）。
           // メンバーの招待は利用者が厳密に管理すること。cfg.allowAllMembers: false で、従来の許可リスト方式に戻る。
@@ -305,12 +320,12 @@ if (process.env.OPENWEBUI_BRIDGE_ACTIVE !== '1') {
             method: 'notifications/claude/channel',
             params: {
               content: content.slice(0, 8000),
-              meta: { message_id: String(m.id), sender, approver: allow.has(m.user_id) ? 'yes' : 'no', channel: cfg.channelName.replace(/[^A-Za-z0-9_.-]/g, '_') },
+              meta: { message_id: id, sender, approver: allow.has(m.user_id) ? 'yes' : 'no', channel: cfg.channelName.replace(/[^A-Za-z0-9_.-]/g, '_') },
             },
           })
           log('1 件を Claude Code に渡しました')
           // 診断ログ（重複の調査用）: 時刻・message_id・チャンネル名だけ。本文は書かない
-          try { fs.appendFileSync(deliveryLog, `${new Date().toISOString()}\t${m.id}\t${cfg.channelName}\n`) } catch {}
+          try { fs.appendFileSync(deliveryLog, `${new Date().toISOString()}\t${id}\t${cfg.channelName}\n`) } catch {}
         }
       }
     } catch (e) {
