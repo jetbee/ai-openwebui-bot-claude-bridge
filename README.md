@@ -79,6 +79,8 @@ that part isn't automated.
 | `allowAllMembers` | If `true` (default), every channel member except the bot is forwarded; set `false` to use `allowlist.json`'s `user_ids` strictly instead |
 | `approverMention` | Optional name to `@mention` at the end of replies that ask for a go/no-go decision |
 | `loginFile` | Optional `{"email","password"}` file used only for the Socket.IO "typing" indicator |
+| `attachments` | Default `true`. Download files attached to channel posts (images etc.) into `attachments/` and append their local paths to the message so Claude can open them with its Read tool. Set `false` to disable |
+| `attachmentMaxFiles` / `attachmentMaxBytes` | Per-post file count limit (default 10) and per-file size limit (default 20 MB). Files older than 7 days are purged automatically |
 
 ## Security notes
 
@@ -180,6 +182,8 @@ Claude Code（claude --dangerously-load-development-channels server:<name>）
 | `allowAllMembers` | 既定 `true`。チャンネルメンバー全員（自分以外）を渡す。`false` にすると `allowlist.json` の `user_ids` だけに厳密に従う |
 | `approverMention` | 許可・判断を求める返信の末尾に付ける `@メンション` 名（任意） |
 | `loginFile` | 「入力中…」表示専用の `{"email","password"}` ファイル（任意） |
+| `attachments` | 既定 `true`。チャンネルの投稿に添付されたファイル（画像など）を `attachments/` にダウンロードし、ローカルのパスを本文に付けて渡す（Claude は Read ツールで開ける）。`false` で無効 |
+| `attachmentMaxFiles` / `attachmentMaxBytes` | 1 投稿あたりの件数の上限（既定 10）と、1 ファイルの大きさの上限（既定 20 MB）。7 日より古いファイルは自動で削除 |
 
 ### セキュリティ上の注意
 

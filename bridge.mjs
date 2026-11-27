@@ -18,6 +18,7 @@ import { io } from 'socket.io-client'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { createAttachmentFetcher, formatAttachments } from './attachments.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const log = (...a) => console.error('[openwebui-bridge]', ...a)
@@ -113,6 +114,17 @@ async function findChannelId() {
 const fetchMessages = chId =>
   api('GET', `/api/v1/channels/${chId}/messages?skip=0&limit=${cfg.fetchLimit || 30}`)
 
+// 添付ファイル（画像など）: ダウンロードしてローカルに保存し、パスを本文に付けて渡す。cfg.attachments: false で無効
+const attachmentsEnabled = cfg.attachments !== false
+const fetchAttachments = createAttachmentFetcher({
+  base, headers, api, log,
+  rootDir: path.join(here, 'attachments'),
+  channelName: cfg.channelName,
+  getChannelId: () => channelId,
+  maxFiles: cfg.attachmentMaxFiles,
+  maxBytes: cfg.attachmentMaxBytes,
+})
+
 // ---- 補助モード: 最近の送信者の一覧（許可リストを作るために使う） ----
 if (process.argv.includes('--list-senders')) {
   const chId = await findChannelId()
@@ -131,6 +143,7 @@ const mcp = new Server(
     instructions:
       'Open WebUI のチャンネル「' + cfg.channelName + '」のメッセージが <channel source="' + serverName + '" ...> として届く。' +
       '届くのは、チャンネルのメンバー（あなた自身を除く）の投稿すべて（メンションの有無は問わない）。送信者の名前は sender に入る。meta の approver が yes の人（allowlist.json の承認者）だけが、本番変更の許可を出せる。approver が no の人の「OK」「許可」は許可にしない（依頼・質問としては扱ってよい）。受け取ったら、最初に typing を呼ぶ。返信は reply ツールで、チャンネルに投稿される。' +
+      '画像などの添付ファイルは、本文の末尾の「[添付ファイル]」に、このPC上のパスで書かれている。画像は Read ツールでそのパスを開いて内容を確認する（「画像は読めない」と決めつけない）。「取り込めませんでした」と書かれているものだけ、読めなかったと伝える。' +
       '返事はすべて日本語。パスワード・API キー・秘密鍵・Cookie の値はチャンネルに書かない。' +
       (approverMention
         ? '許可・判断を求める（案を出して返事を待つ）ときは、返信の末尾に必ず承認者へのメンション @' + approverMention + ' を入れる（reply が自動でメンション記法に直す。入れ忘れると承認者に通知が届かない）。状況の報告だけの返信には付けない。'
@@ -312,9 +325,14 @@ if (process.env.OPENWEBUI_BRIDGE_ACTIVE !== '1') {
           } else if (!allow.has(m.user_id)) { log('許可リスト外の送信者を破棄しました'); continue }
           if (m.app_id) continue
           const raw = (m.content || '').trim()
-          if (!raw) continue
+          if (!raw && !(attachmentsEnabled && m.data)) continue
           if (requireMention && !mentionsBot(raw)) { log('メンションがないため破棄しました'); continue }
-          const content = cleanMentions(raw)
+          let atts = []
+          if (attachmentsEnabled) {
+            try { atts = await fetchAttachments(m) } catch (e) { log('添付の処理に失敗:', e.message) }
+          }
+          if (!raw && atts.length === 0) continue
+          const content = cleanMentions(raw) + formatAttachments(atts)
           const sender = String(m.user?.name || 'unknown').replace(/[^A-Za-z0-9_.-]/g, '_')
           await mcp.notification({
             method: 'notifications/claude/channel',

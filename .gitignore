@@ -19,3 +19,6 @@ delivery-*.log
 *_login
 
 .DS_Store
+
+# Downloaded channel attachments (images etc.)
+attachments/
